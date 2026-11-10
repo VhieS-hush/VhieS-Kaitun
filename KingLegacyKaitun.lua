@@ -478,6 +478,58 @@ localPlayer.Idled:Connect(function()
 	end)
 end)
 
+-- Loading screen gate: fire every connection on a matching button.
+local PLAY_PATTERNS = { "play", "enter", "start", "spawn" }
+
+---Fire all connections of a button across common press signals.
+local function tapButton(button)
+	local fired = false
+	for _, signalName in ipairs({ "Activated", "MouseButton1Click", "MouseButton1Down" }) do
+		local ok, connections = pcall(getconnections, button[signalName])
+		if ok and connections then
+			for _, connection in ipairs(connections) do
+				pcall(function() connection:Fire() end)
+				fired = true
+			end
+		end
+	end
+	return fired
+end
+
+---Scan the PlayerGui for a loading screen Play button and tap it.
+local function autoTapPlay()
+	local playerGui = localPlayer:FindFirstChild("PlayerGui")
+	if not playerGui then return end
+
+	for _, descendant in ipairs(playerGui:GetDescendants()) do
+		local isButton = descendant:IsA("TextButton") or descendant:IsA("ImageButton")
+		if isButton and descendant.Visible then
+			local text = (descendant:IsA("TextButton") and descendant.Text or descendant.Name):lower()
+			for _, pattern in ipairs(PLAY_PATTERNS) do
+				-- Word-boundary match so "Player list" is not tapped.
+				if text:find("%f[%a]" .. pattern .. "%f[%A]") then
+					if tapButton(descendant) then
+						log("Tapped loading button: " .. descendant.Text)
+					end
+					break
+				end
+			end
+		end
+	end
+end
+
+-- Keep tapping Play until a character actually spawns.
+task.spawn(function()
+	while true do
+		local character = localPlayer.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if not root then
+			pcall(autoTapPlay)
+		end
+		task.wait(2)
+	end
+end)
+
 ---Pick a safe GUI parent (hidden UI container when available).
 local function getGuiParent()
 	local ok, hui = pcall(function() return gethui() end)
@@ -712,6 +764,10 @@ end
 
 ---Initialize the kaitun: UI then hand control to the Progression Controller.
 local function initialize()
+	-- Wait for the game to finish loading before building UI.
+	if not game:IsLoaded() then
+		game.Loaded:Wait()
+	end
 	log("Executor: " .. (identifyexecutor and select(1, identifyexecutor()) or "unknown"))
 	createUI()
 	Kaitun.running = true
