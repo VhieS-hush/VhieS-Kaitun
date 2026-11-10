@@ -123,23 +123,25 @@ local function readAccount()
 	local account = Kaitun.account
 	account.level, account.beli, account.statPoints = 0, 0, 0
 
-	local sources = { localPlayer:FindFirstChild("leaderstats"), localPlayer }
-	for _, source in ipairs(sources) do
-		if source then
-			for _, child in ipairs(source:GetChildren()) do
-				if child:IsA("IntValue") or child:IsA("NumberValue") then
-					local name = child.Name:lower()
-					if name:find("level") then
-						account.level = child.Value
-					elseif name:find("beli") or name:find("money") then
-						account.beli = child.Value
-					elseif name:find("stat") and name:find("point") then
-						account.statPoints = child.Value
-					end
+	-- Check leaderstats, then player children; ipairs would stop at a nil leaderstats.
+	local function scanValues(source)
+		if not source then return end
+		for _, child in ipairs(source:GetChildren()) do
+			if child:IsA("IntValue") or child:IsA("NumberValue") then
+				local name = child.Name:lower()
+				if name:find("level") then
+					account.level = child.Value
+				elseif name:find("beli") or name:find("money") then
+					account.beli = child.Value
+				elseif name:find("stat") and name:find("point") then
+					account.statPoints = child.Value
 				end
 			end
 		end
 	end
+
+	scanValues(localPlayer:FindFirstChild("leaderstats"))
+	scanValues(localPlayer)
 	if account.level == 0 then
 		account.level = localPlayer:GetAttribute("Level") or 0
 	end
@@ -762,17 +764,26 @@ function Kaitun:stop()
 	end
 end
 
----Initialize the kaitun: UI then hand control to the Progression Controller.
+---Initialize the kaitun: UI first, then hand control to the controller.
 local function initialize()
-	-- Wait for the game to finish loading before building UI.
-	if not game:IsLoaded() then
-		game.Loaded:Wait()
-	end
-	log("Executor: " .. (identifyexecutor and select(1, identifyexecutor()) or "unknown"))
+	-- Build the UI immediately so the user always sees feedback.
 	createUI()
 	Kaitun.running = true
 	Kaitun.status = "PROGRESSION"
 	log("Kaitun initialized - analyzing account.")
+
+	-- Log executor identity without risking initialization.
+	pcall(function()
+		log("Executor: " .. tostring(identifyexecutor and (identifyexecutor()) or "unknown"))
+	end)
+
+	-- Non-blocking loaded wait; UI and auto-tap already run.
+	task.spawn(function()
+		if not game:IsLoaded() then
+			game.Loaded:Wait()
+		end
+		log("Game loaded.")
+	end)
 end
 
 ---This is called when initialization errors.
