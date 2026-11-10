@@ -586,7 +586,7 @@ local function createUI()
 	Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
 
 	local title = Instance.new("TextLabel")
-	title.Text = "Byte | VhieS Kaitun"
+	title.Text = "Byte | VhieS Kaitun v3"
 	title.TextScaled = true
 	title.Font = Enum.Font.GothamBold
 	title.TextColor3 = Color3.fromRGB(240, 240, 240)
@@ -770,7 +770,7 @@ local function initialize()
 	createUI()
 	Kaitun.running = true
 	Kaitun.status = "PROGRESSION"
-	log("Kaitun initialized - analyzing account.")
+	log("Kaitun initialized - analyzing account. (v3)")
 
 	-- Log executor identity without risking initialization.
 	pcall(function()
